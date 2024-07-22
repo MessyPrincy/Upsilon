@@ -21,6 +21,10 @@ async def on_ready():
 async def ping(ctx):
     await ctx.send('Pong!')
 
+@bot.command(aliases=['git', 'source'])
+async def github(ctx):
+    await ctx.send('https://github.com/MessyPrincy/Upsilon')
+
 class MyView(View):
     def __init__(self):
         super().__init__()

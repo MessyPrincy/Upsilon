@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.ui import Button, Select, View
 from dotenv import load_dotenv
 import os
+import asyncio
 
 # Load environment variables from .env file
 load_dotenv()
@@ -45,7 +46,6 @@ class MySelect(Select):
         selected_option = self.values[0]
 
         if selected_option in ["main1", "main2", "main3", "main4"]:
-            # Map sub-options based on the main selection
             sub_options_map = {
                 "main1": ["Sub-option 1.1", "Sub-option 1.2"],
                 "main2": ["Sub-option 2.1", "Sub-option 2.2"],
@@ -57,9 +57,25 @@ class MySelect(Select):
             self.placeholder = "Choose a sub-option..."
             await interaction.message.edit(view=self.view)
         else:
+            if selected_option.startswith("main1_"):
+                # Process for main option 1 that requires additional number input
+                def check(m):
+                    return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and 1 <= int(m.content) <= 255
+
+                await interaction.followup.send("Please enter a number between 1-255 in the chat.", ephemeral=True)
+                try:
+                    number_message = await bot.wait_for('message', check=check, timeout=60.0)  # Wait for 60 seconds for a response
+                    # Confirm the input and save it
+                    selected_option = f"{selected_option}_{number_message.content}"
+                    await interaction.followup.send(f"Number {number_message.content} received and saved.", ephemeral=True)
+                    await number_message.delete()  # Delete the user's message
+                except asyncio.TimeoutError:
+                    await interaction.followup.send("You did not enter a number in time.", ephemeral=True)
+                    return  # Exit the method if the user fails to input a number in time
+
+            # Append the selected option (or modified option for main1) to selected_values
             self.selected_values.append(selected_option)
-            await interaction.followup.send("Please confirm your selection by pressing the button below.", ephemeral=True)
-            # Note: Confirmation will be handled by the ConfirmButton
+            await interaction.followup.send(f"Selection {selected_option} received and saved.", ephemeral=True)
 
 class ConfirmButton(Button):
     def __init__(self, *args, **kwargs):
@@ -78,15 +94,23 @@ class ConfirmButton(Button):
             # No selection made to confirm
             await interaction.response.send_message("Please make a selection before confirming.", ephemeral=True)
 
+class MyView(View):
+    def __init__(self, user_message=""):
+        super().__init__()
+        self.user_message = user_message  # Store the user's message
+        self.add_item(MySelect())
+        self.add_item(ConfirmButton(label="Confirm Selection", style=discord.ButtonStyle.primary, custom_id="confirm_button"))
+        self.add_item(FinalizeButton(label="Finalize Selections", style=discord.ButtonStyle.danger, custom_id="finalize_button"))
+
 class FinalizeButton(Button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     async def callback(self, interaction: discord.Interaction):
-        view = self.view  
+        view = self.view
         select_menu = next((item for item in view.children if isinstance(item, MySelect)), None)
         if select_menu:
-            messages = [] 
+            messages = []
             for selected_value in select_menu.selected_values:
                 if selected_value == "option1":
                     messages.append("Option 1 specific message.")
@@ -94,33 +118,31 @@ class FinalizeButton(Button):
                     messages.append("Option 2 specific message.")
                 elif selected_value == "option3":
                     messages.append("Option 3 specific message.")
-            
-            combined_message = " ".join(messages) 
-            if not messages: 
+
+            combined_message = " ".join(messages)
+            if not messages:
                 combined_message = f"Final selections: {', '.join(select_menu.selected_values)}"
             
-           
+            # Include the user's input message in the final message
+            combined_message += f"\nUser's input: {view.user_message.content}"
+
             await interaction.response.send_message(combined_message)
-            
             await interaction.message.delete()
         else:
             await interaction.response.send_message("No selections to finalize.", ephemeral=True)
 
-class MyView(View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(MySelect())
-        self.add_item(ConfirmButton(label="Confirm Selection", style=discord.ButtonStyle.primary, custom_id="confirm_button"))
-        self.add_item(FinalizeButton(label="Finalize Selections", style=discord.ButtonStyle.danger, custom_id="finalize_button"))
-
 @bot.command(aliases=['dd'])
 async def dropdown(ctx):
+    await ctx.send("Please type your input before the dropdown menu is shown.")
+
+    msg = await bot.wait_for('message', check=lambda message: message.author == ctx.author and message.channel == ctx.channel)
+
     embed = discord.Embed(
         title="Dropdown Menu",
         description="Please select options from the dropdown menu below and then press the button to confirm.",
         color=discord.Color.blue()
     )
-    view = MyView()
+    view = MyView(user_message=msg)
     await ctx.send(embed=embed, view=view)
 
 

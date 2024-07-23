@@ -20,9 +20,7 @@ class CustomFormatter(logging.Formatter):
             prefix = RED
         else:
             prefix = RESET
-        # Original format
         original_format = super().format(record)
-        # Reset color at the end
         return f"{prefix}{original_format}{RESET}"
 
 logging.basicConfig(level=logging.INFO)
@@ -72,7 +70,7 @@ class MyBot(commands.Bot):
 
     @tasks.loop(minutes=1.0)
     async def status_task(self):
-        statuses = ["with you!", "with humans!"]
+        statuses = ["with the API", "with the code", "with the database", "with the logs"]
         await self.change_presence(activity=discord.Game(random.choice(statuses)))
 
     @status_task.before_loop

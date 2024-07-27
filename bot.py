@@ -77,24 +77,6 @@ class MyBot(commands.Bot):
                         f"Failed to load cog {extension}\n{exception}"
                     )
 
-    async def reload_cogs(self):
-        for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
-            if file.endswith(".py"):
-                extension = file[:-3]
-                try:
-                    await self.reload_extension(f"cogs.{extension}")
-                    self.logger.info(f"Reloaded extension '{extension}'")
-                except commands.ExtensionNotLoaded:
-                    try:
-                        await self.load_extension(f"cogs.{extension}")
-                        self.logger.info(f"Loaded extension '{extension}' because it was not loaded before")
-                    except Exception as e:
-                        exception = f"{type(e).__name__}: {e}"
-                        self.logger.error(f"Failed to load extension {extension}\n{exception}")
-                except Exception as e:
-                    exception = f"{type(e).__name__}: {e}"
-                    self.logger.error(f"Failed to reload extension {extension}\n{exception}")
-
     @tasks.loop(minutes=1.0)
     async def status(self) -> None:
         statuses = ["with discord.py", "with you humans", "to win", "on a linux computer"]

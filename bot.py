@@ -181,4 +181,4 @@ load_dotenv()
 bot = MyBot()
 bot.run(os.getenv('DISCORD_TOKEN'))
 
-# Basically copied from https://github.com/kkrypt0nn/Python-Discord-Bot-Template?tab=readme-ov-file by kkrypt0nn
+# Mostly copied from https://github.com/kkrypt0nn/Python-Discord-Bot-Template?tab=readme-ov-file by kkrypt0nn

@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
@@ -84,13 +86,32 @@ class MyBot(commands.Bot):
 
     @status.before_loop
     async def before_status(self) -> None:
-        await self.load_cogs()
         await self.wait_until_ready()
 
     async def on_ready(self):
         self.logger.info(f'Logged in as {self.user}')
+        await self.sync_commands_with_backoff()
+        await self.load_cogs()
         self.status.start()
-        await self.tree.sync()
+
+    async def sync_commands_with_backoff(self):
+        delay = 1  # Initial delay in seconds
+        max_delay = 60  # Maximum delay in seconds
+
+        while True:
+            try:
+                await self.tree.sync()
+                self.logger.info("Commands synced successfully.")
+                break
+            except discord.HTTPException as e:
+                if e.status == 429:  # Rate limited
+                    retry_after = int(e.response.headers.get("Retry-After", delay))
+                    self.logger.warning(f"Rate limited. Retrying in {retry_after} seconds.")
+                    await asyncio.sleep(retry_after)
+                    delay = min(delay * 2, max_delay)  # Exponential backoff
+                else:
+                    self.logger.error(f"Failed to sync commands: {e}")
+                    break
 
     async def on_command_completion(self, context: Context) -> None:
         full_command_name = context.command.qualified_name

@@ -26,4 +26,3 @@ class Misc(commands.Cog, name="misc"):
 
 async def setup(bot) -> None:
     await bot.add_cog(Misc(bot))
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))

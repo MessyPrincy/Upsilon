@@ -298,7 +298,7 @@ class Game(commands.Cog, name="game"):
         self.player_order[ctx.guild.id].append(ctx.author.id)
         await ctx.send(f"{ctx.author.mention} has joined the game! ({len(game['players'])}/6 players)")
 
-        if 1 <= len(game["players"]) <= 6 and not game.get("game_started"):
+        if 3 <= len(game["players"]) <= 6 and not game.get("game_started"):
             game["game_started"] = True
             await self.check_and_start_game(ctx.guild.id)
 
@@ -316,7 +316,7 @@ class Game(commands.Cog, name="game"):
     async def check_and_start_game(self, guild_id: int) -> None:
         await asyncio.sleep(10)
         game = self.active_games[guild_id]
-        if 1 <= len(game["players"]) <= 6:
+        if 3 <= len(game["players"]) <= 6:
             await self.start_game_with_players(guild_id)
 
     async def start_game_with_players(self, guild_id: int) -> None:

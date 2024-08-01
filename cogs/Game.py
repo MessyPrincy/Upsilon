@@ -65,13 +65,11 @@ def ice_storm(caster, target, game):
     player_ids = list(game["players"].keys())
     target_index = player_ids.index(target["member"].id)
 
-    # Check the player above the target
     if target_index > 0:
         above_player = game["players"][player_ids[target_index - 1]]
         above_player["position"] = max(0, min(10, above_player["position"] + 2))
         affected_players.append(above_player["display_name"])
 
-    # Check the player below the target
     if target_index < len(player_ids) - 1:
         below_player = game["players"][player_ids[target_index + 1]]
         below_player["position"] = max(0, min(10, below_player["position"] + 2))
@@ -179,8 +177,8 @@ def counterspell(caster, target, game):
 
 def feeblemind(caster, target, game):
     total_gold = caster["gold"] + target["gold"]
-    caster["gold"] = total_gold // 2
-    target["gold"] = total_gold - caster["gold"]
+    target["gold"] = total_gold // 2
+    caster["gold"] = total_gold - target["gold"]
     return f"{caster['display_name']} and {target['display_name']} split their gold equally."
 
 
@@ -259,6 +257,7 @@ class Game(commands.Cog, name="game"):
 
     @commands.hybrid_command(name="start_rpw",
                              description="Starts a new game of Rock, Paper, Wizard and waits for players to join.")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def start_game(self, ctx: Context) -> None:
         if ctx.guild.id in self.active_games:
             await ctx.send("A game is already in progress in this server.")
@@ -273,6 +272,7 @@ class Game(commands.Cog, name="game"):
         await ctx.send("Game started! Use `/join_rpw` to join. Waiting for 3 to 6 players...")
 
     @commands.hybrid_command(name="join_rpw", description="Join an active game.")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def join_rpw(self, ctx: Context) -> None:
         if ctx.guild.id not in self.active_games:
             await ctx.send("No active game to join. Start a new game with `/start_rpw`.", ephemeral=True, delete_after=20)
@@ -301,6 +301,7 @@ class Game(commands.Cog, name="game"):
             await self.check_and_start_game(ctx.guild.id)
 
     @commands.hybrid_command(name="end_game", description="Ends the current game.")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def end_game(self, ctx: Context) -> None:
         if ctx.guild.id not in self.active_games:
             await ctx.send("No active game to end.")
@@ -333,7 +334,7 @@ class Game(commands.Cog, name="game"):
     async def update_game_board(self, guild_id: int) -> None:
         game = self.active_games[guild_id]
         channel = game["channel"]
-        board = [" "] * 11
+        board = ["   "] * 11
 
         position_dict = {i: [] for i in range(11)}
 
@@ -365,6 +366,7 @@ class Game(commands.Cog, name="game"):
 
     @commands.hybrid_command(name="info", description="Get information about a spell.")
     @app_commands.describe(emoji="The emoji of the spell you want information about")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def spell_info(self, ctx: Context, emoji: str) -> None:
         for spell in SPELLS:
             if spell["emoji"] == emoji:
@@ -379,6 +381,7 @@ class Game(commands.Cog, name="game"):
 
     @commands.hybrid_command(name="cast_spell", description="Cast a spell on a target.")
     @app_commands.describe(spell="The spell to cast (name or emoji)", target="The target player")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def cast_spell(self, ctx: Context, spell: str, target: discord.Member) -> None:
         if ctx.guild.id not in self.active_games:
             await ctx.send("No active game to cast a spell in.", ephemeral=True)
@@ -549,6 +552,7 @@ class Game(commands.Cog, name="game"):
             await channel.send("Next round starting!", delete_after=20)
 
     @commands.hybrid_command(name="spell_book", description="Displays all spells with their emojis and effects.")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def spell_book(self, ctx: Context) -> None:
         embed = discord.Embed(title="Spell Book", color=0x00FF00)
         for spell in SPELLS:

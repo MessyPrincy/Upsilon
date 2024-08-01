@@ -7,9 +7,13 @@ from dotenv import load_dotenv
 import os
 import logging
 import random
+import aiosqlite
 
 intents = discord.Intents.default()
 intents.message_content = True
+
+DATABASE_FILE = "data/user_memories.db"
+os.makedirs(os.path.dirname(DATABASE_FILE), exist_ok=True)
 
 
 class LoggingFormatter(logging.Formatter):
@@ -57,6 +61,34 @@ logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
 
+async def setup_database():
+    async with aiosqlite.connect(DATABASE_FILE) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS memories (
+                user_id TEXT PRIMARY KEY,
+                memory TEXT
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS chat_channels (
+                guild_id TEXT PRIMARY KEY,
+                channel_id TEXT
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS personalities (
+                guild_id TEXT PRIMARY KEY,
+                personality TEXT
+            )
+        """)
+        await db.commit()
+
+
+async def main():
+    await setup_database()
+    logger.info("Database setup complete.")
+
+
 class MyBot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(
@@ -81,7 +113,7 @@ class MyBot(commands.Bot):
 
     @tasks.loop(minutes=1.0)
     async def status(self) -> None:
-        statuses = ["with discord.py", "with you humans", "to win", "on a linux computer"]
+        statuses = ["with py-cord", "with you humans", "to win", "on a linux computer"]
         await self.change_presence(activity=discord.Game(name=random.choice(statuses)))
 
     @status.before_loop
@@ -92,6 +124,7 @@ class MyBot(commands.Bot):
         self.logger.info(f'Logged in as {self.user}')
         await self.sync_commands_with_backoff()
         await self.load_cogs()
+        await main()
         self.status.start()
 
     async def sync_commands_with_backoff(self):

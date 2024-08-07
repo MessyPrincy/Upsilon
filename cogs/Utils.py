@@ -15,7 +15,6 @@ class Utils(commands.Cog, name="utils"):
         self.bot = bot
 
     @commands.hybrid_command(name="joinvc", description="Join the voice channel.")
-    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def join_vc(self, ctx: Context) -> None:
         if ctx.author.voice:
             channel = ctx.author.voice.channel
@@ -30,7 +29,6 @@ class Utils(commands.Cog, name="utils"):
             await ctx.send("You are not in a voice channel.")
 
     @commands.hybrid_command(name="leavevc", description="Leave the voice channel.")
-    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def leave_vc(self, ctx: Context) -> None:
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
@@ -41,4 +39,3 @@ class Utils(commands.Cog, name="utils"):
 
 async def setup(bot) -> None:
     await bot.add_cog(Utils(bot))
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))

@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import discord
 from discord.ext import commands, tasks
@@ -64,23 +65,20 @@ logger.addHandler(file_handler)
 async def setup_database():
     async with aiosqlite.connect(DATABASE_FILE) as db:
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS memories (
-                user_id TEXT PRIMARY KEY,
-                memory TEXT
-            )
-        """)
+                CREATE TABLE IF NOT EXISTS memories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    priority INTEGER,
+                    user_id TEXT,
+                    memory TEXT,
+                    context TEXT
+                )
+                """)
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS chat_channels (
-                guild_id TEXT PRIMARY KEY,
-                channel_id TEXT
-            )
-        """)
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS personalities (
-                guild_id TEXT PRIMARY KEY,
-                personality TEXT
-            )
-        """)
+                CREATE TABLE IF NOT EXISTS chat_channels (
+                    guild_id TEXT PRIMARY KEY,
+                    channel_id TEXT
+                )
+                """)
         await db.commit()
 
 
@@ -97,6 +95,9 @@ class MyBot(commands.Bot):
             help_command=None
         )
         self.logger = logger
+        self.commands_synced = False
+        self.last_sync_time = 0
+        self.sync_interval = 3600  # Sync every hour
 
     async def load_cogs(self) -> None:
         for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
@@ -122,19 +123,29 @@ class MyBot(commands.Bot):
 
     async def on_ready(self):
         self.logger.info(f'Logged in as {self.user}')
-        await self.sync_commands_with_backoff()
+        synced = await bot.tree.sync()
+        self.logger.info(f"Commands synced: {synced}")
         await self.load_cogs()
         await main()
         self.status.start()
 
     async def sync_commands_with_backoff(self):
-        delay = 1  # Initial delay in seconds
-        max_delay = 60  # Maximum delay in seconds
+        current_time = time.time()
+        if current_time - self.last_sync_time < self.sync_interval:
+            self.logger.info("Sync interval not reached, skipping sync.")
+            return
+
+        delay = 1
+        max_delay = 60
 
         while True:
             try:
+                guild_id = os.getenv('GUILD_ID')
+                guild = discord.Object(id=guild_id)
+                self.tree.clear_commands(guild=guild)
                 await self.tree.sync()
                 self.logger.info("Commands synced successfully.")
+                self.last_sync_time = time.time()
                 break
             except discord.HTTPException as e:
                 if e.status == 429:  # Rate limited
